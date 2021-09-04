@@ -32,11 +32,14 @@ TEMP_PATH = os.getenv('TEMP_PATH', '/tmp')
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
-    update.effective_message.reply_html(
-        f'<b>Access denied</b>\n\n'
-        f'Your chat id is <code>{update.effective_chat.id}</code>.\n'
-        f'Your username is <code>{update.effective_message.from_user.username}</code>.'
-    )
+    if update.effective_message.from_user.username != TELEGRAM_USERNAME:
+        update.effective_message.reply_html(
+            f'<b>Access denied</b>\n\n'
+            f'Your chat id is <code>{update.effective_chat.id}</code>.\n'
+            f'Your username is <code>{update.effective_message.from_user.username}</code>.'
+        )
+    else:
+        update.message.reply_text("My dear cruel world do you ever think about me?")
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
