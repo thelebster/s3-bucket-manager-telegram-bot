@@ -11,10 +11,10 @@ RUN cd /tmp \
     && pip install -r /tmp/requirements.txt
 
 COPY s3_bucket_bot /srv/s3_bucket_bot
-WORKDIR /
+WORKDIR /srv
 
 ENV TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=1ms --retries=3 \
     CMD curl --fail https://api.telegram.org/bot${TELEGRAM_API_TOKEN}/getWebhookInfo || exit 1
 
-CMD python /srv/s3_bucket_bot/bot.py
+CMD python -m s3_bucket_bot
