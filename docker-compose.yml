@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  bot:
+    build: .
+    environment:
+      - TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
+      - TELEGRAM_USERNAME=${TELEGRAM_USERNAME}
+      - AWS_SERVER_PUBLIC_KEY=${AWS_SERVER_PUBLIC_KEY}
+      - AWS_SERVER_SECRET_KEY=${AWS_SERVER_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - ENDPOINT_URL=${ENDPOINT_URL}
+      - EDGE_ENDPOINT_URL=${EDGE_ENDPOINT_URL}
+      - CUSTOM_ENDPOINT_URL=${CUSTOM_ENDPOINT_URL}
+      - BUCKET_NAME=${BUCKET_NAME}
+      - TEMP_PATH=${TEMP_PATH}
+    image: thelebster/s3-bucket-telegram-bot
+    hostname: s3-bucket-telegram-bot
+    container_name: s3-bucket-telegram-bot
+    restart: always
+    volumes:
+      - ./tmp:/tmp
