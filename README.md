@@ -34,7 +34,7 @@ CUSTOM_ENDPOINT_URL=https://cdn.example.com
 BUCKET_NAME=myuploads
 ```
 
-## Usage
+## Deploy/Run
 
 Follow [instructions](https://core.telegram.org/bots#3-how-do-i-create-a-bot) to obtain a token, then paste token to `.env` file in form of `TELEGRAM_API_TOKEN=XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`.
 
@@ -42,11 +42,35 @@ Follow [instructions](https://core.telegram.org/bots#3-how-do-i-create-a-bot) to
 docker-compose up -d --build
 ```
 
+## Usage
+
+```
+/exist image.jpg
+```
+
+```
+/delete image.jpg
+```
+
+```
+/make_public image.jpg
+```
+
+```
+/make_private image.jpg
+```
+
+```
+/copy_file image.jpg assets/image.jpg
+```
+
 ## TODO
 
 * [x] Upload single file [up tp 20MB](https://core.telegram.org/bots/api#getfile)
-* [ ] Delete single file
-* [ ] Change access level (make file private or public)
+* [x] Delete single file
+* [x] Copy single file to another path on the same bucket
+* [x] Change access level (make file private or public)
+* [x] Check if file exist
 * [ ] List files by pattern
 
 ## Development notes
