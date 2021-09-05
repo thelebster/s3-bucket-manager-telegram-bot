@@ -11,7 +11,8 @@ from telegram import Update, ParseMode, File
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, BaseFilter
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
-from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file
+from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file, \
+    make_public as s3_make_public, make_private as s3_make_private
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -115,6 +116,34 @@ def delete_file(update: Update, context: CallbackContext):
         update.message.reply_text(text=f'Error: {e}')
 
 
+def make_public(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_file_name(file_name)
+        s3_make_public(file_name)
+        update.message.reply_text(text=f'File {s3_file_path} has become public.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
+def make_private(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_file_name(file_name)
+        s3_make_private(file_name)
+        update.message.reply_text(text=f'File {s3_file_path} has become private.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -178,6 +207,18 @@ def main():
     # delete file from s3 by path
     dispatcher.add_handler(CommandHandler('delete',
                                           delete_file,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # make file public
+    dispatcher.add_handler(CommandHandler('make_public',
+                                          make_public,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # make file private
+    dispatcher.add_handler(CommandHandler('make_private',
+                                          make_private,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 

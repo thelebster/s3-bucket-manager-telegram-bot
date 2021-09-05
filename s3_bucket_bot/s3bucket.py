@@ -78,3 +78,15 @@ def delete_file(file_name):
     s3_client = get_s3_client()
     # Delete the file
     s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_name)
+
+
+def make_public(file_name):
+    s3_client = get_s3_client()
+    # Make the file public
+    s3_client.put_object_acl(ACL='public-read', Bucket=BUCKET_NAME, Key=file_name)
+
+
+def make_private(file_name):
+    s3_client = get_s3_client()
+    # Make the file public
+    s3_client.put_object_acl(ACL='private', Bucket=BUCKET_NAME, Key=file_name)
