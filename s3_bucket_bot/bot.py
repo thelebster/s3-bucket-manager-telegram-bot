@@ -11,7 +11,7 @@ from telegram import Update, ParseMode, File
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, BaseFilter
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
-from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file, \
+from .s3bucket import upload_file as s3_upload_file, get_obj_url as s3_get_obj_url, delete_file as s3_delete_file, \
     make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
     copy_file as s3_copy_file, get_file_acl as s3_get_file_acl
 
@@ -99,7 +99,7 @@ def upload_file(update: Update, context: CallbackContext) -> None:
         os.unlink(tmp_file_name)
     except Exception as e:
         logger.error(e)
-    s3_file_path = s3_get_file_name(file_name)
+    s3_file_path = s3_get_obj_url(file_name)
     update.message.reply_text(text=s3_file_path)
 
 
@@ -109,7 +109,7 @@ def delete_file(update: Update, context: CallbackContext):
 
     file_name = context.args[0].strip().lstrip('/')
     try:
-        s3_file_path = s3_get_file_name(file_name)
+        s3_file_path = s3_get_obj_url(file_name)
         s3_delete_file(file_name)
         update.message.reply_text(text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
     except Exception as e:
@@ -123,7 +123,7 @@ def make_public(update: Update, context: CallbackContext):
 
     file_name = context.args[0].strip().lstrip('/')
     try:
-        s3_file_path = s3_get_file_name(file_name)
+        s3_file_path = s3_get_obj_url(file_name)
         s3_make_public(file_name)
         update.message.reply_text(text=f'File {s3_file_path} has become public.')
     except Exception as e:
@@ -137,7 +137,7 @@ def make_private(update: Update, context: CallbackContext):
 
     file_name = context.args[0].strip().lstrip('/')
     try:
-        s3_file_path = s3_get_file_name(file_name)
+        s3_file_path = s3_get_obj_url(file_name)
         s3_make_private(file_name)
         update.message.reply_text(text=f'File {s3_file_path} has become private.')
     except Exception as e:
@@ -151,7 +151,7 @@ def file_exist(update: Update, context: CallbackContext):
 
     file_name = context.args[0].strip().lstrip('/')
     try:
-        s3_file_path = s3_get_file_name(file_name)
+        s3_file_path = s3_get_obj_url(file_name)
         if s3_file_exist(file_name):
             update.message.reply_text(text=f'File {s3_file_path} exist.')
             return
@@ -168,12 +168,12 @@ def copy_file(update: Update, context: CallbackContext):
     src = context.args[0].strip().lstrip('/')
     dest = context.args[1].strip().lstrip('/')
     try:
-        s3_src_path = s3_get_file_name(src)
+        s3_src_path = s3_get_obj_url(src)
         if not s3_file_exist(src):
             update.message.reply_text(text=f'Source file {s3_src_path} does not exist.')
             return
 
-        s3_dest_path = s3_get_file_name(dest)
+        s3_dest_path = s3_get_obj_url(dest)
         s3_copy_file(src, dest)
         update.message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
     except Exception as e:
@@ -187,7 +187,7 @@ def get_file_acl(update: Update, context: CallbackContext):
 
     file_name = context.args[0].strip().lstrip('/')
     try:
-        s3_file_path = s3_get_file_name(file_name)
+        s3_file_path = s3_get_obj_url(file_name)
         acl = s3_get_file_acl(file_name)
         update.message.reply_text(text=f'File {s3_file_path} is {acl}.')
     except Exception as e:
