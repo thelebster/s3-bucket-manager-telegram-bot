@@ -102,3 +102,50 @@ def file_exist(file_name):
             raise e
         return False
     return True
+
+
+def copy_file(src, dest):
+    try:
+        s3_client = get_s3_client()
+        acl = get_file_acl(src)
+        response = s3_client.copy_object(
+            Bucket=BUCKET_NAME,
+            CopySource=f'{BUCKET_NAME}/{src}',
+            Key=dest,
+            ACL=acl
+        )
+        logging.debug(response)
+    except ClientError as e:
+        logging.error(e)
+        if e.response['ResponseMetadata']['HTTPStatusCode'] != 404:
+            raise e
+        return False
+    return True
+
+
+def get_file_obj(file_name):
+    try:
+        s3_client = get_s3_client()
+        response = s3_client.get_object(Bucket=BUCKET_NAME, Key=file_name)
+        return response
+    except ClientError as e:
+        logging.error(e)
+    return None
+
+
+def get_file_acl(file_name):
+    try:
+        s3_client = get_s3_client()
+        response = s3_client.get_object_acl(Bucket=BUCKET_NAME, Key=file_name)
+        public = False
+        if response['Grants'] is not None:
+            if len(response['Grants']) > 0:
+                grants = list(filter(lambda grant: grant['Grantee']['Type'] != 'CanonicalUser', response['Grants']))
+                if len(grants) > 0:
+                    public = grants[0]['Permission'] == 'READ'
+
+        if public:
+            return 'public-read'
+    except ClientError as e:
+        logging.error(e)
+    return 'private'
