@@ -11,7 +11,7 @@ from telegram import Update, ParseMode, File
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, BaseFilter
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
-from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name
+from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -101,6 +101,20 @@ def upload_file(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(text=s3_file_path)
 
 
+def delete_file(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_file_name(file_name)
+        s3_delete_file(file_name)
+        update.message.reply_text(text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -160,6 +174,12 @@ def main():
                                            | Filters.document)
                                           & Filters.user(username=TELEGRAM_USERNAME)
                                           & ~Filters.command, upload_file))
+
+    # delete file from s3 by path
+    dispatcher.add_handler(CommandHandler('delete',
+                                          delete_file,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
 
     # Register the error handler.
     dispatcher.add_error_handler(error_handler)
