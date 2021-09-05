@@ -62,7 +62,7 @@ def upload_file(file_name, object_name=None, mime_type=None, acl=None):
     return True
 
 
-def get_file_name(file_name):
+def get_obj_url(file_name):
     """ Get an object URL """
     if CUSTOM_ENDPOINT_URL is not None:
         return f'{CUSTOM_ENDPOINT_URL}/{file_name}'
