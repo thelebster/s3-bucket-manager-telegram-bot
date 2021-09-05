@@ -72,3 +72,9 @@ def get_file_name(file_name):
         endpoint_url = ENDPOINT_URL.lstrip('https://')
 
     return f'https://{BUCKET_NAME}.{endpoint_url}/{file_name}'
+
+
+def delete_file(file_name):
+    s3_client = get_s3_client()
+    # Delete the file
+    s3_client.delete_object(Bucket=BUCKET_NAME, Key=file_name)
