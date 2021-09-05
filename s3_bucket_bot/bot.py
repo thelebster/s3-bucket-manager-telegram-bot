@@ -62,6 +62,14 @@ def upload_file(update: Update, context: CallbackContext) -> None:
     if isinstance(attachment, list):
         attachment = attachment[-1]
 
+    # @see https://core.telegram.org/bots/api#getfile
+    if attachment.file_size > 20 * 1024 * 1024:
+        update.message.reply_html(
+            f'<b>File is too big</b>\n\n'
+            f'For the moment, <a href="https://core.telegram.org/bots/api#getfile">bots can download files of up to 20MB in size</a>.\n'
+        )
+        return
+
     file = attachment.get_file()
 
     def get_original_file_name():
