@@ -12,7 +12,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
 from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file, \
-    make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist
+    make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
+    copy_file as s3_copy_file, get_file_acl as s3_get_file_acl
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -160,6 +161,40 @@ def file_exist(update: Update, context: CallbackContext):
         update.message.reply_text(text=f'Error: {e}')
 
 
+def copy_file(update: Update, context: CallbackContext):
+    if len(context.args) < 2:
+        return
+
+    src = context.args[0].strip().lstrip('/')
+    dest = context.args[1].strip().lstrip('/')
+    try:
+        s3_src_path = s3_get_file_name(src)
+        if not s3_file_exist(src):
+            update.message.reply_text(text=f'Source file {s3_src_path} does not exist.')
+            return
+
+        s3_dest_path = s3_get_file_name(dest)
+        s3_copy_file(src, dest)
+        update.message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
+def get_file_acl(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_file_name(file_name)
+        acl = s3_get_file_acl(file_name)
+        update.message.reply_text(text=f'File {s3_file_path} is {acl}.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -241,6 +276,18 @@ def main():
     # check if file exist
     dispatcher.add_handler(CommandHandler('exist',
                                           file_exist,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # Could be used to copy, move or rename file
+    dispatcher.add_handler(CommandHandler('copy_file',
+                                          copy_file,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # check file acl
+    dispatcher.add_handler(CommandHandler('get_file_acl',
+                                          get_file_acl,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 
