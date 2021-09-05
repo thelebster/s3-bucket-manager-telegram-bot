@@ -90,3 +90,15 @@ def make_private(file_name):
     s3_client = get_s3_client()
     # Make the file public
     s3_client.put_object_acl(ACL='private', Bucket=BUCKET_NAME, Key=file_name)
+
+
+def file_exist(file_name):
+    try:
+        s3_client = get_s3_client()
+        s3_client.head_object(Bucket=BUCKET_NAME, Key=file_name)
+    except ClientError as e:
+        logging.error(e)
+        if e.response['ResponseMetadata']['HTTPStatusCode'] != 404:
+            raise e
+        return False
+    return True
