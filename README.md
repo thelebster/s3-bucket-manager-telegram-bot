@@ -44,7 +44,7 @@ docker-compose up -d --build
 
 ## TODO
 
-* [x] Upload single file
+* [x] Upload single file [up tp 20MB](https://core.telegram.org/bots/api#getfile)
 * [ ] Delete single file
 * [ ] Change access level (make file private or public)
 * [ ] List files by pattern
