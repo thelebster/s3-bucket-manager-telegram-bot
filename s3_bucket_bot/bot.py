@@ -12,7 +12,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
 from .s3bucket import upload_file as s3_upload_file, get_file_name as s3_get_file_name, delete_file as s3_delete_file, \
-    make_public as s3_make_public, make_private as s3_make_private
+    make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -144,6 +144,22 @@ def make_private(update: Update, context: CallbackContext):
         update.message.reply_text(text=f'Error: {e}')
 
 
+def file_exist(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_file_name(file_name)
+        if s3_file_exist(file_name):
+            update.message.reply_text(text=f'File {s3_file_path} exist.')
+            return
+        update.message.reply_text(text=f'File {s3_file_path} does not exist.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -219,6 +235,12 @@ def main():
     # make file private
     dispatcher.add_handler(CommandHandler('make_private',
                                           make_private,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # check if file exist
+    dispatcher.add_handler(CommandHandler('exist',
+                                          file_exist,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 
