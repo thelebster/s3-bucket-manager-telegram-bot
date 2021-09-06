@@ -149,3 +149,28 @@ def get_file_acl(file_name):
     except ClientError as e:
         logging.error(e)
     return 'private'
+
+
+def list_files(prefix, limit=10):
+    if limit > 1000:
+        limit = 1000
+
+    entries = []
+    try:
+        s3 = boto3.resource('s3',
+                            endpoint_url=ENDPOINT_URL,
+                            aws_access_key_id=AWS_SERVER_PUBLIC_KEY,
+                            aws_secret_access_key=AWS_SERVER_SECRET_KEY,
+                            region_name=AWS_REGION)
+        bucket = s3.Bucket(BUCKET_NAME)
+        for obj in bucket.objects.filter(Prefix=prefix).limit(limit):
+            last_modified = obj.last_modified.strftime("%Y-%m-%d %H:%M:%S")
+            entry = {
+                'key': obj.key,
+                'size': obj.size,
+                'last_modified': last_modified,
+            }
+            entries.append(entry)
+    except ClientError as e:
+        logging.error(e)
+    return entries
