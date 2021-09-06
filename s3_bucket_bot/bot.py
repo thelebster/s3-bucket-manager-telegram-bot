@@ -8,12 +8,12 @@ from os import path
 import mimetypes
 
 from telegram import Update, ParseMode, File
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, BaseFilter
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Defaults
 from telegram import PhotoSize, Audio, Animation, Video, Document
 
 from .s3bucket import upload_file as s3_upload_file, get_obj_url as s3_get_obj_url, delete_file as s3_delete_file, \
     make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
-    copy_file as s3_copy_file, get_file_acl as s3_get_file_acl
+    copy_file as s3_copy_file, get_file_acl as s3_get_file_acl, list_files as s3_list_files
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -195,6 +195,23 @@ def get_file_acl(update: Update, context: CallbackContext):
         update.message.reply_text(text=f'Error: {e}')
 
 
+def list_files(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    prefix = context.args[0].strip().lstrip('/')
+    limit = 10
+    if len(context.args) == 2:
+        limit = int(context.args[1])
+    entries = s3_list_files(prefix, limit=limit)
+    if len(entries) == 0:
+        update.message.reply_text(text='Not found')
+        return
+
+    message = '\n'.join(list(map(lambda entry: s3_get_obj_url(entry['key']), entries)))
+    update.message.reply_text(text=message)
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -230,7 +247,8 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(TELEGRAM_API_TOKEN, use_context=True)
+    defaults = Defaults(disable_web_page_preview=True)
+    updater = Updater(TELEGRAM_API_TOKEN, use_context=True, defaults=defaults)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -288,6 +306,12 @@ def main():
     # check file acl
     dispatcher.add_handler(CommandHandler('get_file_acl',
                                           get_file_acl,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # list bucket objects
+    dispatcher.add_handler(CommandHandler('list',
+                                          list_files,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 

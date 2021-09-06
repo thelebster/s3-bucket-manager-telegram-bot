@@ -1,6 +1,6 @@
 # S3 Bucket Manager Telegram Bot
 
-Simple telegram bot that allows upload, ~~download and delete~~ files on S3-compatible storage like [AWS S3](https://aws.amazon.com/s3/) and [DigitalOcean Spaces](https://www.digitalocean.com/products/spaces/).
+Simple telegram bot that allows upload, download and delete files on S3-compatible storage like [AWS S3](https://aws.amazon.com/s3/) and [DigitalOcean Spaces](https://www.digitalocean.com/products/spaces/).
 
 Built on top of [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot).
 
@@ -64,6 +64,10 @@ docker-compose up -d --build
 /copy_file image.jpg assets/image.jpg
 ```
 
+```
+/list PREFIX LIMIT
+```
+
 ## TODO
 
 * [x] Upload single file [up tp 20MB](https://core.telegram.org/bots/api#getfile)
@@ -71,7 +75,7 @@ docker-compose up -d --build
 * [x] Copy single file to another path on the same bucket
 * [x] Change access level (make file private or public)
 * [x] Check if file exist
-* [ ] List files by pattern
+* [x] List files by prefix
 
 ## Development notes
 
