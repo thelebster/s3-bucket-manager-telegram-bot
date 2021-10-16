@@ -13,7 +13,8 @@ from telegram import PhotoSize, Audio, Animation, Video, Document
 
 from .s3bucket import upload_file as s3_upload_file, get_obj_url as s3_get_obj_url, delete_file as s3_delete_file, \
     make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
-    copy_file as s3_copy_file, get_file_acl as s3_get_file_acl, list_files as s3_list_files
+    copy_file as s3_copy_file, get_file_acl as s3_get_file_acl, list_files as s3_list_files, \
+    get_meta as s3_get_meta
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -212,6 +213,20 @@ def list_files(update: Update, context: CallbackContext):
     update.message.reply_text(text=message)
 
 
+def get_metadata(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        response = s3_get_meta(file_name)
+        logger.info(response)
+        update.message.reply_text(text=f'{response}')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -312,6 +327,12 @@ def main():
     # list bucket objects
     dispatcher.add_handler(CommandHandler('list',
                                           list_files,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # get object metadata
+    dispatcher.add_handler(CommandHandler('get_meta',
+                                          get_metadata,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 

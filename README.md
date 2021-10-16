@@ -68,6 +68,10 @@ docker-compose up -d --build
 /list PREFIX LIMIT
 ```
 
+```
+/get_meta image.jpg
+```
+
 ## TODO
 
 * [x] Upload single file [up tp 20MB](https://core.telegram.org/bots/api#getfile)
@@ -76,6 +80,7 @@ docker-compose up -d --build
 * [x] Change access level (make file private or public)
 * [x] Check if file exist
 * [x] List files by prefix
+* [x] Get object metadata
 
 ## Development notes
 

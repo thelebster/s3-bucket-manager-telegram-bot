@@ -174,3 +174,16 @@ def list_files(prefix, limit=10):
     except ClientError as e:
         logging.error(e)
     return entries
+
+
+def get_meta(file_name):
+    try:
+        s3_client = get_s3_client()
+        response = s3_client.head_object(
+            Bucket=BUCKET_NAME,
+            Key=file_name,
+        )
+        return response
+    except ClientError as e:
+        logging.error(e)
+    return None
