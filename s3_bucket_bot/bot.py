@@ -6,6 +6,8 @@ import traceback
 import uuid
 from os import path
 import mimetypes
+import requests
+from requests.exceptions import HTTPError
 
 from telegram import Update, ParseMode, File
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Defaults
@@ -29,6 +31,14 @@ TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
 DEVELOPER_CHAT_ID = os.getenv('DEVELOPER_CHAT_ID')
 
 TEMP_PATH = os.getenv('TEMP_PATH', '/tmp')
+
+DIGITALOCEAN_TOKEN = os.getenv('DIGITALOCEAN_TOKEN')
+BUCKET_NAME = None
+if os.getenv('BUCKET_NAME', '').strip():
+    BUCKET_NAME = os.getenv('BUCKET_NAME')
+ENDPOINT_URL = None
+if os.getenv('ENDPOINT_URL', '').strip():
+    ENDPOINT_URL = os.getenv('ENDPOINT_URL')
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -112,7 +122,8 @@ def delete_file(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_delete_file(file_name)
-        update.message.reply_text(text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
+        update.message.reply_text(
+            text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
     except Exception as e:
         logger.error(e)
         update.message.reply_text(text=f'Error: {e}')
@@ -227,6 +238,47 @@ def get_metadata(update: Update, context: CallbackContext):
         update.message.reply_text(text=f'Error: {e}')
 
 
+def purge_cache(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        return
+
+    if DIGITALOCEAN_TOKEN is None:
+        raise Exception('Service is not available.')
+
+    file_name = context.args[0].strip().lstrip('/')
+    try:
+        s3_file_path = s3_get_obj_url(file_name)
+        endpoint_url = ENDPOINT_URL.lstrip('https://')
+        origin = f'{BUCKET_NAME}.{endpoint_url}'
+        headers = {
+            'Authorization': f'Bearer {DIGITALOCEAN_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        api_url = f'https://api.digitalocean.com/v2/cdn/endpoints'
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        if 'endpoints' not in data:
+            raise Exception('No endpoints found.')
+
+        endpoints = list(filter(lambda endpoint: endpoint['origin'] == origin, data['endpoints']))
+        if len(endpoints) == 0:
+            raise Exception('No endpoints found.')
+
+        endpoint_id = endpoints[0]['id']
+        logger.info(endpoint_id)
+
+        api_url = f'https://api.digitalocean.com/v2/cdn/endpoints/{endpoint_id}/cache'
+        response = requests.delete(api_url, headers=headers, json={
+            'files': [file_name]
+        })
+        response.raise_for_status()
+        update.message.reply_text(text=f'File {s3_file_path} has been cleared from all of your edge caches.')
+    except Exception as e:
+        logger.error(e)
+        update.message.reply_text(text=f'Error: {e}')
+
+
 def error_handler(update: Update, context: CallbackContext) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
@@ -333,6 +385,12 @@ def main():
     # get object metadata
     dispatcher.add_handler(CommandHandler('get_meta',
                                           get_metadata,
+                                          Filters.user(username=TELEGRAM_USERNAME),
+                                          pass_args=True))
+
+    # purge cache
+    dispatcher.add_handler(CommandHandler('purge_cache',
+                                          purge_cache,
                                           Filters.user(username=TELEGRAM_USERNAME),
                                           pass_args=True))
 
