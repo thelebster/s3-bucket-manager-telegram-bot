@@ -7,7 +7,7 @@ RUN apt-get update && \
 RUN pip install pipenv
 COPY s3_bucket_bot/Pipfile* /tmp/
 RUN cd /tmp \
-    && pipenv lock --requirements > requirements.txt \
+    && pipenv requirements > requirements.txt \
     && pip install -r /tmp/requirements.txt
 
 COPY s3_bucket_bot /srv/s3_bucket_bot
