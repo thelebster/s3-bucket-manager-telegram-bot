@@ -2,7 +2,7 @@ FROM python:3.8-slim
 LABEL maintainer="Anton Lebedev <mailbox@lebster.me>"
 
 RUN apt-get update && \
-  apt-get --no-install-recommends --assume-yes install curl
+  apt-get --no-install-recommends --assume-yes install curl build-essential
 
 RUN pip install pipenv
 COPY s3_bucket_bot/Pipfile* /tmp/
