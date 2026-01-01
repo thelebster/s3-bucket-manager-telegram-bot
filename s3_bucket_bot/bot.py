@@ -52,17 +52,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f'Your username is <code>{update.effective_message.from_user.username}</code>.'
         )
     else:
-        await update.message.reply_text("My dear cruel world do you ever think about me?")
+        await update.effective_message.reply_text("My dear cruel world do you ever think about me?")
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    await update.message.reply_text("My dear cruel world do you ever think about me?")
+    await update.effective_message.reply_text("My dear cruel world do you ever think about me?")
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
-    await update.message.reply_text(update.message.text)
+    await update.effective_message.reply_text(update.effective_message.text)
 
 
 async def bad_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -71,13 +71,14 @@ async def bad_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    attachment = update.message.effective_attachment
+    message = update.effective_message
+    attachment = message.effective_attachment
     if isinstance(attachment, list):
         attachment = attachment[-1]
 
     # @see https://core.telegram.org/bots/api#getfile
     if attachment.file_size > 20 * 1024 * 1024:
-        await update.message.reply_html(
+        await message.reply_html(
             f'<b>File is too big</b>\n\n'
             f'For the moment, <a href="https://core.telegram.org/bots/api#getfile">bots can download files of up to 20MB in size</a>.\n'
         )
@@ -92,10 +93,10 @@ async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return original_file_name
 
     file_name = get_original_file_name()
-    if update.message.caption is not None:
-        if update.message.caption.strip():
+    if message.caption is not None:
+        if message.caption.strip():
             # Trim spaces and remove leading slash
-            file_name = update.message.caption.strip().lstrip('/')
+            file_name = message.caption.strip().lstrip('/')
             if file_name.endswith('/'):
                 file_name += get_original_file_name()
 
@@ -111,7 +112,7 @@ async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     except Exception as e:
         logger.error(e)
     s3_file_path = s3_get_obj_url(file_name)
-    await update.message.reply_text(text=s3_file_path)
+    await message.reply_text(text=s3_file_path)
 
 
 async def delete_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -122,11 +123,11 @@ async def delete_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_delete_file(file_name)
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def make_public(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -137,10 +138,10 @@ async def make_public(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_public(file_name)
-        await update.message.reply_text(text=f'File {s3_file_path} has become public.')
+        await update.effective_message.reply_text(text=f'File {s3_file_path} has become public.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def make_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -151,10 +152,10 @@ async def make_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_private(file_name)
-        await update.message.reply_text(text=f'File {s3_file_path} has become private.')
+        await update.effective_message.reply_text(text=f'File {s3_file_path} has become private.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def file_exist(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,12 +166,12 @@ async def file_exist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         if s3_file_exist(file_name):
-            await update.message.reply_text(text=f'File {s3_file_path} exist.')
+            await update.effective_message.reply_text(text=f'File {s3_file_path} exist.')
             return
-        await update.message.reply_text(text=f'File {s3_file_path} does not exist.')
+        await update.effective_message.reply_text(text=f'File {s3_file_path} does not exist.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def copy_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -182,15 +183,15 @@ async def copy_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_src_path = s3_get_obj_url(src)
         if not s3_file_exist(src):
-            await update.message.reply_text(text=f'Source file {s3_src_path} does not exist.')
+            await update.effective_message.reply_text(text=f'Source file {s3_src_path} does not exist.')
             return
 
         s3_dest_path = s3_get_obj_url(dest)
         s3_copy_file(src, dest)
-        await update.message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
+        await update.effective_message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def get_file_acl(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -201,10 +202,10 @@ async def get_file_acl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         acl = s3_get_file_acl(file_name)
-        await update.message.reply_text(text=f'File {s3_file_path} is {acl}.')
+        await update.effective_message.reply_text(text=f'File {s3_file_path} is {acl}.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def list_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -217,11 +218,11 @@ async def list_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
         limit = int(context.args[1])
     entries = s3_list_files(prefix, limit=limit)
     if len(entries) == 0:
-        await update.message.reply_text(text='Not found')
+        await update.effective_message.reply_text(text='Not found')
         return
 
     message = '\n'.join(list(map(lambda entry: s3_get_obj_url(entry['key']), entries)))
-    await update.message.reply_text(text=message)
+    await update.effective_message.reply_text(text=message)
 
 
 async def get_metadata(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -232,10 +233,10 @@ async def get_metadata(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = s3_get_meta(file_name)
         logger.info(response)
-        await update.message.reply_text(text=f'{response}')
+        await update.effective_message.reply_text(text=f'{response}')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def purge_cache(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -273,10 +274,10 @@ async def purge_cache(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'files': [file_name]
         })
         response.raise_for_status()
-        await update.message.reply_text(text=f'File {s3_file_path} has been cleared from all of your edge caches.')
+        await update.effective_message.reply_text(text=f'File {s3_file_path} has been cleared from all of your edge caches.')
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(text=f'Error: {e}')
+        await update.effective_message.reply_text(text=f'Error: {e}')
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
