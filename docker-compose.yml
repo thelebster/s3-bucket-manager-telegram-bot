@@ -19,3 +19,17 @@ services:
     restart: always
     volumes:
       - ./tmp:/tmp
+
+  test:
+    build: .
+    profiles:
+      - test
+    environment:
+      - AWS_SERVER_PUBLIC_KEY=${AWS_SERVER_PUBLIC_KEY}
+      - AWS_SERVER_SECRET_KEY=${AWS_SERVER_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - ENDPOINT_URL=${ENDPOINT_URL}
+      - BUCKET_NAME=${BUCKET_NAME}
+    volumes:
+      - ./tests:/srv/tests
+    command: python -m unittest discover -s tests -v
