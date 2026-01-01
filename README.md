@@ -79,8 +79,13 @@ Public access in R2 is managed at the bucket level via [R2 Public Buckets](https
 
 Follow [instructions](https://core.telegram.org/bots#3-how-do-i-create-a-bot) to obtain a token, then paste token to `.env` file in form of `TELEGRAM_API_TOKEN=XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`.
 
+Run `make help` to see all available commands.
+
 ```
-docker-compose up -d --build
+make build   # Build Docker image
+make upd     # Start the bot (detached)
+make logs    # Show bot logs
+make down    # Stop the bot
 ```
 
 ## Testing
@@ -88,8 +93,7 @@ docker-compose up -d --build
 Run integration tests (requires S3 credentials in `.env`):
 
 ```
-docker-compose --profile test build
-docker-compose --profile test run --rm test
+make test
 ```
 
 Note: ACL-related tests are automatically skipped on storage providers that don't support object-level ACLs (e.g., Cloudflare R2).
