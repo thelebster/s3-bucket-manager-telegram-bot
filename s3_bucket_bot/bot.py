@@ -9,9 +9,9 @@ import mimetypes
 import requests
 from requests.exceptions import HTTPError
 
-from telegram import Update, ParseMode, File
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Defaults
-from telegram import PhotoSize, Audio, Animation, Video, Document
+from telegram import Update, LinkPreviewOptions
+from telegram.constants import ParseMode
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, Defaults
 
 from .s3bucket import upload_file as s3_upload_file, get_obj_url as s3_get_obj_url, delete_file as s3_delete_file, \
     make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
@@ -43,47 +43,47 @@ if os.getenv('ENDPOINT_URL', '').strip():
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     if update.effective_message.from_user.username != TELEGRAM_USERNAME:
-        update.effective_message.reply_html(
+        await update.effective_message.reply_html(
             f'<b>Access denied</b>\n\n'
             f'Your chat id is <code>{update.effective_chat.id}</code>.\n'
             f'Your username is <code>{update.effective_message.from_user.username}</code>.'
         )
     else:
-        update.message.reply_text("My dear cruel world do you ever think about me?")
+        await update.message.reply_text("My dear cruel world do you ever think about me?")
 
 
-def help_command(update: Update, context: CallbackContext) -> None:
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    update.message.reply_text("My dear cruel world do you ever think about me?")
+    await update.message.reply_text("My dear cruel world do you ever think about me?")
 
 
-def echo(update: Update, context: CallbackContext) -> None:
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
-    update.message.reply_text(update.message.text)
+    await update.message.reply_text(update.message.text)
 
 
-def bad_command(update: Update, context: CallbackContext) -> None:
+async def bad_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Raise an error to trigger the error handler."""
     raise Exception("Something went wrong, please try again later.")
 
 
-def upload_file(update: Update, context: CallbackContext) -> None:
+async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     attachment = update.message.effective_attachment
     if isinstance(attachment, list):
         attachment = attachment[-1]
 
     # @see https://core.telegram.org/bots/api#getfile
     if attachment.file_size > 20 * 1024 * 1024:
-        update.message.reply_html(
+        await update.message.reply_html(
             f'<b>File is too big</b>\n\n'
             f'For the moment, <a href="https://core.telegram.org/bots/api#getfile">bots can download files of up to 20MB in size</a>.\n'
         )
         return
 
-    file = attachment.get_file()
+    file = await attachment.get_file()
 
     def get_original_file_name():
         original_file_name = path.basename(file.file_path)
@@ -104,17 +104,17 @@ def upload_file(update: Update, context: CallbackContext) -> None:
         mime_type = attachment.mime_type
 
     tmp_file_name = f'{TEMP_PATH}/{uuid.uuid4()}'
-    file = File.download(file, tmp_file_name)
-    s3_upload_file(file, file_name, mime_type, 'public-read')  # Make public by default
+    await file.download_to_drive(tmp_file_name)
+    s3_upload_file(tmp_file_name, file_name, mime_type, 'public-read')  # Make public by default
     try:
         os.unlink(tmp_file_name)
     except Exception as e:
         logger.error(e)
     s3_file_path = s3_get_obj_url(file_name)
-    update.message.reply_text(text=s3_file_path)
+    await update.message.reply_text(text=s3_file_path)
 
 
-def delete_file(update: Update, context: CallbackContext):
+async def delete_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -122,14 +122,14 @@ def delete_file(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_delete_file(file_name)
-        update.message.reply_text(
+        await update.message.reply_text(
             text=f'File {s3_file_path} has been deleted. Do not forget to clear all of your edge caches.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def make_public(update: Update, context: CallbackContext):
+async def make_public(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -137,13 +137,13 @@ def make_public(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_public(file_name)
-        update.message.reply_text(text=f'File {s3_file_path} has become public.')
+        await update.message.reply_text(text=f'File {s3_file_path} has become public.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def make_private(update: Update, context: CallbackContext):
+async def make_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -151,13 +151,13 @@ def make_private(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_private(file_name)
-        update.message.reply_text(text=f'File {s3_file_path} has become private.')
+        await update.message.reply_text(text=f'File {s3_file_path} has become private.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def file_exist(update: Update, context: CallbackContext):
+async def file_exist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -165,15 +165,15 @@ def file_exist(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         if s3_file_exist(file_name):
-            update.message.reply_text(text=f'File {s3_file_path} exist.')
+            await update.message.reply_text(text=f'File {s3_file_path} exist.')
             return
-        update.message.reply_text(text=f'File {s3_file_path} does not exist.')
+        await update.message.reply_text(text=f'File {s3_file_path} does not exist.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def copy_file(update: Update, context: CallbackContext):
+async def copy_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
         return
 
@@ -182,18 +182,18 @@ def copy_file(update: Update, context: CallbackContext):
     try:
         s3_src_path = s3_get_obj_url(src)
         if not s3_file_exist(src):
-            update.message.reply_text(text=f'Source file {s3_src_path} does not exist.')
+            await update.message.reply_text(text=f'Source file {s3_src_path} does not exist.')
             return
 
         s3_dest_path = s3_get_obj_url(dest)
         s3_copy_file(src, dest)
-        update.message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
+        await update.message.reply_text(text=f'File {s3_src_path} has been copied to {s3_dest_path}.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def get_file_acl(update: Update, context: CallbackContext):
+async def get_file_acl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -201,13 +201,13 @@ def get_file_acl(update: Update, context: CallbackContext):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         acl = s3_get_file_acl(file_name)
-        update.message.reply_text(text=f'File {s3_file_path} is {acl}.')
+        await update.message.reply_text(text=f'File {s3_file_path} is {acl}.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def list_files(update: Update, context: CallbackContext):
+async def list_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -217,14 +217,14 @@ def list_files(update: Update, context: CallbackContext):
         limit = int(context.args[1])
     entries = s3_list_files(prefix, limit=limit)
     if len(entries) == 0:
-        update.message.reply_text(text='Not found')
+        await update.message.reply_text(text='Not found')
         return
 
     message = '\n'.join(list(map(lambda entry: s3_get_obj_url(entry['key']), entries)))
-    update.message.reply_text(text=message)
+    await update.message.reply_text(text=message)
 
 
-def get_metadata(update: Update, context: CallbackContext):
+async def get_metadata(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -232,13 +232,13 @@ def get_metadata(update: Update, context: CallbackContext):
     try:
         response = s3_get_meta(file_name)
         logger.info(response)
-        update.message.reply_text(text=f'{response}')
+        await update.message.reply_text(text=f'{response}')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def purge_cache(update: Update, context: CallbackContext):
+async def purge_cache(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
         return
 
@@ -273,13 +273,13 @@ def purge_cache(update: Update, context: CallbackContext):
             'files': [file_name]
         })
         response.raise_for_status()
-        update.message.reply_text(text=f'File {s3_file_path} has been cleared from all of your edge caches.')
+        await update.message.reply_text(text=f'File {s3_file_path} has been cleared from all of your edge caches.')
     except Exception as e:
         logger.error(e)
-        update.message.reply_text(text=f'Error: {e}')
+        await update.message.reply_text(text=f'Error: {e}')
 
 
-def error_handler(update: Update, context: CallbackContext) -> None:
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error or/and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
@@ -291,9 +291,10 @@ def error_handler(update: Update, context: CallbackContext) -> None:
 
     # Build the message with some markup and additional information about what happened.
     # You might need to add some logic to deal with messages longer than the 4096 character limit.
+    update_dict = update.to_dict() if update else {}
     message = (
         f'An exception was raised while handling an update\n'
-        f'<pre>update = {html.escape(json.dumps(update.to_dict(), indent=2, ensure_ascii=False))}'
+        f'<pre>update = {html.escape(json.dumps(update_dict, indent=2, ensure_ascii=False))}'
         '</pre>\n\n'
         f'<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n'
         f'<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n'
@@ -301,109 +302,91 @@ def error_handler(update: Update, context: CallbackContext) -> None:
     )
 
     chat_id = DEVELOPER_CHAT_ID
-    if chat_id is None:
+    if chat_id is None and update:
         # Send error message back to current chat.
         chat_id = update.effective_chat.id
 
     # Finally, send the message
-    context.bot.send_message(chat_id=chat_id, text=message, parse_mode=ParseMode.HTML)
+    if chat_id:
+        await context.bot.send_message(chat_id=chat_id, text=message, parse_mode=ParseMode.HTML)
 
 
 def main():
     """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
-    defaults = Defaults(disable_web_page_preview=True)
-    updater = Updater(TELEGRAM_API_TOKEN, use_context=True, defaults=defaults)
-
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+    # Create the Application and pass it your bot's token.
+    defaults = Defaults(link_preview_options=LinkPreviewOptions(is_disabled=True))
+    application = Application.builder().token(TELEGRAM_API_TOKEN).defaults(defaults).build()
 
     # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CommandHandler('bad_command', bad_command, Filters.user(username=TELEGRAM_USERNAME)))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler('bad_command', bad_command, filters.User(username=TELEGRAM_USERNAME)))
 
     # on noncommand i.e message - echo the message on Telegram
-    dispatcher.add_handler(MessageHandler(Filters.text
-                                          & Filters.user(username=TELEGRAM_USERNAME)
-                                          & ~Filters.command, echo))
+    application.add_handler(MessageHandler(filters.TEXT
+                                           & filters.User(username=TELEGRAM_USERNAME)
+                                           & ~filters.COMMAND, echo))
 
     # upload file to S3
-    dispatcher.add_handler(MessageHandler((Filters.photo
-                                           | Filters.attachment
-                                           | Filters.audio
-                                           | Filters.video
-                                           | Filters.animation
-                                           | Filters.document)
-                                          & Filters.user(username=TELEGRAM_USERNAME)
-                                          & ~Filters.command, upload_file))
+    application.add_handler(MessageHandler((filters.PHOTO
+                                            | filters.ATTACHMENT
+                                            | filters.AUDIO
+                                            | filters.VIDEO
+                                            | filters.ANIMATION
+                                            | filters.Document.ALL)
+                                           & filters.User(username=TELEGRAM_USERNAME)
+                                           & ~filters.COMMAND, upload_file))
 
     # delete file from s3 by path
-    dispatcher.add_handler(CommandHandler('delete',
-                                          delete_file,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('delete',
+                                           delete_file,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # make file public
-    dispatcher.add_handler(CommandHandler('make_public',
-                                          make_public,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('make_public',
+                                           make_public,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # make file private
-    dispatcher.add_handler(CommandHandler('make_private',
-                                          make_private,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('make_private',
+                                           make_private,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # check if file exist
-    dispatcher.add_handler(CommandHandler('exist',
-                                          file_exist,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('exist',
+                                           file_exist,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # Could be used to copy, move or rename file
-    dispatcher.add_handler(CommandHandler('copy_file',
-                                          copy_file,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('copy_file',
+                                           copy_file,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # check file acl
-    dispatcher.add_handler(CommandHandler('get_file_acl',
-                                          get_file_acl,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('get_file_acl',
+                                           get_file_acl,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # list bucket objects
-    dispatcher.add_handler(CommandHandler('list',
-                                          list_files,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('list',
+                                           list_files,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # get object metadata
-    dispatcher.add_handler(CommandHandler('get_meta',
-                                          get_metadata,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('get_meta',
+                                           get_metadata,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # purge cache
-    dispatcher.add_handler(CommandHandler('purge_cache',
-                                          purge_cache,
-                                          Filters.user(username=TELEGRAM_USERNAME),
-                                          pass_args=True))
+    application.add_handler(CommandHandler('purge_cache',
+                                           purge_cache,
+                                           filters.User(username=TELEGRAM_USERNAME)))
 
     # Register the error handler.
-    dispatcher.add_error_handler(error_handler)
+    application.add_error_handler(error_handler)
 
-    # Start the Bot
-    updater.start_polling()
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    # Start the Bot and run until Ctrl-C
+    application.run_polling()
 
 
 if __name__ == '__main__':

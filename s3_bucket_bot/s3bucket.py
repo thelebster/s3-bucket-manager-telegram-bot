@@ -88,7 +88,7 @@ def make_public(file_name):
 
 def make_private(file_name):
     s3_client = get_s3_client()
-    # Make the file public
+    # Make the file private
     s3_client.put_object_acl(ACL='private', Bucket=BUCKET_NAME, Key=file_name)
 
 
