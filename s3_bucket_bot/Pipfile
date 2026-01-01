@@ -4,11 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-requests = "*"
-python-telegram-bot = "13.7"
-boto3 = "*"
+requests = "~=2.32"
+python-telegram-bot = "~=13.15"
+boto3 = "~=1.42"
 
 [dev-packages]
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"

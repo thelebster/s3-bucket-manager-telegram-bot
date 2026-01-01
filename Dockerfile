@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.9-slim
 LABEL maintainer="Anton Lebedev <mailbox@lebster.me>"
 
 RUN apt-get update && \

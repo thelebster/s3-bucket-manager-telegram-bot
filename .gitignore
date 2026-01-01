@@ -1,1 +1,8 @@
+.DS_Store
+.idea
+
+__pycache__/
+tmp/
+
 .env
+docker-compose.override.yml
