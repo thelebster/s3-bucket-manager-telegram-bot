@@ -3,6 +3,28 @@ import boto3
 import logging
 from botocore.exceptions import ClientError
 
+
+class ACLNotSupportedError(Exception):
+    """Raised when the storage provider does not support ACL operations."""
+
+    DEFAULT_MESSAGE = (
+        'ACL operations are not supported by this storage provider. '
+        'Public access must be configured at the bucket level.'
+    )
+
+    @classmethod
+    def raise_if_not_implemented(cls, e: ClientError):
+        """Raise ACLNotSupportedError if the error is a NotImplemented error."""
+        error_code = e.response.get('Error', {}).get('Code', '')
+        if error_code == 'NotImplemented':
+            raise cls(cls.DEFAULT_MESSAGE)
+
+    @classmethod
+    def is_not_implemented(cls, e: ClientError) -> bool:
+        """Check if the error is a NotImplemented error."""
+        error_code = e.response.get('Error', {}).get('Code', '')
+        return error_code == 'NotImplemented'
+
 AWS_SERVER_PUBLIC_KEY = os.getenv('AWS_SERVER_PUBLIC_KEY')
 AWS_SERVER_SECRET_KEY = os.getenv('AWS_SERVER_SECRET_KEY')
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
@@ -81,15 +103,31 @@ def delete_file(file_name):
 
 
 def make_public(file_name):
-    s3_client = get_s3_client()
-    # Make the file public
-    s3_client.put_object_acl(ACL='public-read', Bucket=BUCKET_NAME, Key=file_name)
+    """Make the file public.
+
+    Raises:
+        ACLNotSupportedError: If the storage provider does not support ACL operations.
+    """
+    try:
+        s3_client = get_s3_client()
+        s3_client.put_object_acl(ACL='public-read', Bucket=BUCKET_NAME, Key=file_name)
+    except ClientError as e:
+        ACLNotSupportedError.raise_if_not_implemented(e)
+        raise
 
 
 def make_private(file_name):
-    s3_client = get_s3_client()
-    # Make the file private
-    s3_client.put_object_acl(ACL='private', Bucket=BUCKET_NAME, Key=file_name)
+    """Make the file private.
+
+    Raises:
+        ACLNotSupportedError: If the storage provider does not support ACL operations.
+    """
+    try:
+        s3_client = get_s3_client()
+        s3_client.put_object_acl(ACL='private', Bucket=BUCKET_NAME, Key=file_name)
+    except ClientError as e:
+        ACLNotSupportedError.raise_if_not_implemented(e)
+        raise
 
 
 def file_exist(file_name):
@@ -105,15 +143,21 @@ def file_exist(file_name):
 
 
 def copy_file(src, dest):
+    """Copy a file within the bucket."""
     try:
         s3_client = get_s3_client()
         acl = get_file_acl(src)
-        response = s3_client.copy_object(
-            Bucket=BUCKET_NAME,
-            CopySource=f'{BUCKET_NAME}/{src}',
-            Key=dest,
-            ACL=acl
-        )
+
+        copy_args = {
+            'Bucket': BUCKET_NAME,
+            'CopySource': f'{BUCKET_NAME}/{src}',
+            'Key': dest,
+        }
+        # Only include ACL if the storage provider supports it
+        if acl is not None:
+            copy_args['ACL'] = acl
+
+        response = s3_client.copy_object(**copy_args)
         logging.debug(response)
     except ClientError as e:
         logging.error(e)
@@ -134,6 +178,11 @@ def get_file_obj(file_name):
 
 
 def get_file_acl(file_name):
+    """Get the ACL of a file.
+
+    Returns:
+        str: 'public-read', 'private', or None if ACL operations are not supported.
+    """
     try:
         s3_client = get_s3_client()
         response = s3_client.get_object_acl(Bucket=BUCKET_NAME, Key=file_name)
@@ -146,8 +195,11 @@ def get_file_acl(file_name):
 
         if public:
             return 'public-read'
+        return 'private'
     except ClientError as e:
         logging.error(e)
+        if ACLNotSupportedError.is_not_implemented(e):
+            return None
     return 'private'
 
 

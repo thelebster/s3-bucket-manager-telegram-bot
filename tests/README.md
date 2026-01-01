@@ -21,12 +21,22 @@ docker-compose --profile test run --rm test
 
 ## Expected Output
 
-You may see `ERROR:root:...404...` messages in the output - these are **expected** and not test failures. They come from tests that verify behavior for non-existent files (`test_file_exist_returns_false`, `test_get_meta_nonexistent`, `test_delete_file`).
+You may see `ERROR:root:...404...` or `ERROR:root:...NotImplemented...` messages in the output - these are **expected** and not test failures. The 404 errors come from tests that verify behavior for non-existent files. The NotImplemented errors come from storage providers that don't support ACL operations (e.g., Cloudflare R2).
 
-A successful run looks like:
+A successful run on AWS S3 or DigitalOcean Spaces:
 
 ```
 Ran 15 tests in 18.322s
 
 OK
 ```
+
+A successful run on Cloudflare R2 (ACL tests skipped):
+
+```
+Ran 15 tests in 14.263s
+
+OK (skipped=3)
+```
+
+The skipped tests are ACL-related (`test_make_public`, `test_make_private`, `test_copy_file_preserves_acl`) which are not supported by R2.

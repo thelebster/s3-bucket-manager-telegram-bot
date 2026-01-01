@@ -7,7 +7,6 @@ import uuid
 from os import path
 import mimetypes
 import requests
-from requests.exceptions import HTTPError
 
 from telegram import Update, LinkPreviewOptions
 from telegram.constants import ParseMode
@@ -16,7 +15,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from .s3bucket import upload_file as s3_upload_file, get_obj_url as s3_get_obj_url, delete_file as s3_delete_file, \
     make_public as s3_make_public, make_private as s3_make_private, file_exist as s3_file_exist, \
     copy_file as s3_copy_file, get_file_acl as s3_get_file_acl, list_files as s3_list_files, \
-    get_meta as s3_get_meta
+    get_meta as s3_get_meta, ACLNotSupportedError
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -73,7 +72,7 @@ async def bad_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = update.effective_message
     attachment = message.effective_attachment
-    if isinstance(attachment, list):
+    if isinstance(attachment, (list, tuple)):
         attachment = attachment[-1]
 
     # @see https://core.telegram.org/bots/api#getfile
@@ -139,6 +138,9 @@ async def make_public(update: Update, context: ContextTypes.DEFAULT_TYPE):
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_public(file_name)
         await update.effective_message.reply_text(text=f'File {s3_file_path} has become public.')
+    except ACLNotSupportedError as e:
+        logger.warning(e)
+        await update.effective_message.reply_text(text=str(e))
     except Exception as e:
         logger.error(e)
         await update.effective_message.reply_text(text=f'Error: {e}')
@@ -153,6 +155,9 @@ async def make_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         s3_file_path = s3_get_obj_url(file_name)
         s3_make_private(file_name)
         await update.effective_message.reply_text(text=f'File {s3_file_path} has become private.')
+    except ACLNotSupportedError as e:
+        logger.warning(e)
+        await update.effective_message.reply_text(text=str(e))
     except Exception as e:
         logger.error(e)
         await update.effective_message.reply_text(text=f'Error: {e}')
@@ -202,7 +207,11 @@ async def get_file_acl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         acl = s3_get_file_acl(file_name)
-        await update.effective_message.reply_text(text=f'File {s3_file_path} is {acl}.')
+        if acl is None:
+            await update.effective_message.reply_text(
+                text='ACL operations are not supported by this storage provider.')
+        else:
+            await update.effective_message.reply_text(text=f'File {s3_file_path} is {acl}.')
     except Exception as e:
         logger.error(e)
         await update.effective_message.reply_text(text=f'Error: {e}')

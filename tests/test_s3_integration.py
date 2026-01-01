@@ -23,12 +23,41 @@ from s3_bucket_bot.s3bucket import (
     get_obj_url,
     BUCKET_NAME,
     AWS_SERVER_PUBLIC_KEY,
+    ACLNotSupportedError,
 )
 
 
 def generate_test_path(extension='txt'):
     """Generate a unique test file path under tests/ prefix."""
     return f'tests/{uuid.uuid4()}.{extension}'
+
+
+def check_acl_support():
+    """Check if the storage provider supports ACL operations."""
+    local_file = f'/tmp/{uuid.uuid4()}.txt'
+    s3_path = generate_test_path('txt')
+
+    try:
+        # Create a test file
+        with open(local_file, 'w') as f:
+            f.write('acl test')
+        upload_file(local_file, s3_path, 'text/plain', 'private')
+
+        # Try to get ACL - returns None if not supported
+        acl = get_file_acl(s3_path)
+        return acl is not None
+    except ACLNotSupportedError:
+        return False
+    finally:
+        # Cleanup
+        try:
+            os.unlink(local_file)
+        except OSError:
+            pass
+        try:
+            delete_file(s3_path)
+        except Exception:
+            pass
 
 
 class TestS3Integration(unittest.TestCase):
@@ -44,6 +73,8 @@ class TestS3Integration(unittest.TestCase):
             raise unittest.SkipTest('S3 credentials not configured. Set AWS_SERVER_PUBLIC_KEY.')
         if not BUCKET_NAME:
             raise unittest.SkipTest('BUCKET_NAME not configured.')
+        # Check if the storage provider supports ACL operations
+        cls.acl_supported = check_acl_support()
 
     def setUp(self):
         """Reset created files list before each test."""
@@ -95,7 +126,8 @@ class TestS3Integration(unittest.TestCase):
 
         self.assertTrue(result)
         self.assertTrue(file_exist(s3_path))
-        self.assertEqual(get_file_acl(s3_path), 'private')
+        if self.acl_supported:
+            self.assertEqual(get_file_acl(s3_path), 'private')
 
         os.unlink(local_file)
 
@@ -140,6 +172,9 @@ class TestS3Integration(unittest.TestCase):
 
     def test_make_public(self):
         """Test making a file public."""
+        if not self.acl_supported:
+            self.skipTest('ACL operations not supported by storage provider')
+
         local_file = self.create_test_file()
         s3_path = generate_test_path('txt')
         self.track_s3_file(s3_path)
@@ -155,6 +190,9 @@ class TestS3Integration(unittest.TestCase):
 
     def test_make_private(self):
         """Test making a file private."""
+        if not self.acl_supported:
+            self.skipTest('ACL operations not supported by storage provider')
+
         local_file = self.create_test_file()
         s3_path = generate_test_path('txt')
         self.track_s3_file(s3_path)
@@ -191,6 +229,9 @@ class TestS3Integration(unittest.TestCase):
 
     def test_copy_file_preserves_acl(self):
         """Test that copy preserves ACL."""
+        if not self.acl_supported:
+            self.skipTest('ACL operations not supported by storage provider')
+
         local_file = self.create_test_file()
         src_path = generate_test_path('txt')
         dest_path = generate_test_path('txt')
