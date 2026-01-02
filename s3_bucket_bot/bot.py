@@ -134,11 +134,17 @@ async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         shutil.copy(file.file_path, tmp_file_name)
     else:
         await file.download_to_drive(tmp_file_name)
-    s3_upload_file(tmp_file_name, file_name, mime_type, 'public-read')  # Make public by default
     try:
-        os.unlink(tmp_file_name)
+        s3_upload_file(tmp_file_name, file_name, mime_type, 'public-read')  # Make public by default
     except Exception as e:
         logger.error(e)
+        await message.reply_text(f"Upload failed: {e}")
+        return
+    finally:
+        try:
+            os.unlink(tmp_file_name)
+        except Exception as e:
+            logger.error(e)
     s3_file_path = s3_get_obj_url(file_name)
     await message.reply_text(text=s3_file_path)
 
