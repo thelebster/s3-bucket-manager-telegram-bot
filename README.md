@@ -100,37 +100,43 @@ Note: ACL-related tests are automatically skipped on storage providers that don'
 
 ## Usage
 
-```
-/exist image.jpg
-```
+### Uploading Files
 
-```
-/delete image.jpg
-```
+Send any file to the bot to upload it to your S3 bucket.
 
-```
-/make_public image.jpg
-```
+**Upload to root:** Simply send the file without a caption. The original filename will be used.
 
-```
-/make_private image.jpg
-```
+**Upload to a specific path/folder:** Add a caption with the desired path when sending the file.
 
-```
-/copy_file image.jpg assets/image.jpg
-```
+| Caption | Uploaded to |
+|---------|-------------|
+| *(no caption)* | `original_filename.jpg` |
+| `photos/vacation.jpg` | `photos/vacation.jpg` |
+| `assets/images/logo.png` | `assets/images/logo.png` |
 
-```
-/list PREFIX LIMIT
-```
+**Example:** Upload an image to `images/not-enough.jpg` by setting the caption:
 
-```
-/get_meta image.jpg
-```
+![Upload with caption](assets/upload-with-caption.png)
 
-```
-/purge_cache image.jpg
-```
+Bot response confirming the upload path:
+
+![Upload response](assets/upload-response.png)
+
+> **Note:** Folders are created automatically. Leading slashes are stripped (`/foo/bar.jpg` → `foo/bar.jpg`).
+
+### Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/exist` | Check if file exists | `/exist images/logo.png` |
+| `/delete` | Delete a file | `/delete images/old.jpg` |
+| `/make_public` | Set file ACL to public | `/make_public doc.pdf` |
+| `/make_private` | Set file ACL to private | `/make_private doc.pdf` |
+| `/get_file_acl` | Get current file ACL | `/get_file_acl doc.pdf` |
+| `/copy_file` | Copy file within bucket | `/copy_file logo.png backup/logo.png` |
+| `/list` | List files by prefix (default limit: 10) | `/list images/ 20` |
+| `/get_meta` | Get object metadata | `/get_meta photo.jpg` |
+| `/purge_cache` | Clear CDN cache (DigitalOcean only) | `/purge_cache image.jpg` |
 
 ## Handling Files Larger Than 20MB
 
