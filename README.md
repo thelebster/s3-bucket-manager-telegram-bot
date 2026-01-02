@@ -132,6 +132,48 @@ Note: ACL-related tests are automatically skipped on storage providers that don'
 /purge_cache image.jpg
 ```
 
+## Handling Files Larger Than 20MB
+
+The Telegram Bot API [limits file downloads to 20MB](https://core.telegram.org/bots/api#getfile). Two workarounds exist:
+
+### 1. Local Bot API Server (Recommended)
+
+Deploy a [local Bot API server](https://core.telegram.org/bots/api#using-a-local-bot-api-server) to increase the limit to 2GB with minimal code changes. Build from [tdlib/telegram-bot-api](https://github.com/tdlib/telegram-bot-api) or use [aiogram/telegram-bot-api](https://github.com/aiogram/telegram-bot-api) Docker image:
+
+```yaml
+# Add to docker-compose.yml
+telegram-bot-api:
+  image: aiogram/telegram-bot-api
+  environment:
+    TELEGRAM_API_ID: "<your_api_id>"
+    TELEGRAM_API_HASH: "<your_api_hash>"
+    TELEGRAM_LOCAL: 1
+  ports:
+    - "8081:8081"
+```
+
+Get `api_id` and `api_hash` from https://my.telegram.org → "API development tools".
+
+Then update the bot to use the local server:
+
+```python
+application = Application.builder() \
+    .token(TELEGRAM_API_TOKEN) \
+    .base_url("http://telegram-bot-api:8081/bot") \
+    .base_file_url("http://telegram-bot-api:8081/file/bot") \
+    .defaults(defaults) \
+    .build()
+```
+
+### 2. Client API Libraries
+
+Use MTProto client libraries instead of the Bot API. Supports 2GB files but requires significant code rewrite:
+
+- [Pyrogram](https://pyrogram.org/)
+- [Telethon](https://docs.telethon.dev/)
+
+See also: [aiogram discussion #557](https://github.com/aiogram/aiogram/discussions/557)
+
 ## TODO
 
 * [x] Upload single file [up to 20MB](https://core.telegram.org/bots/api#getfile)
