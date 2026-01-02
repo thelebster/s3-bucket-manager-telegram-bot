@@ -11,14 +11,14 @@ services:
       - EDGE_ENDPOINT_URL=${EDGE_ENDPOINT_URL}
       - CUSTOM_ENDPOINT_URL=${CUSTOM_ENDPOINT_URL}
       - BUCKET_NAME=${BUCKET_NAME}
-      - TEMP_PATH=${TEMP_PATH}
+      - TEMP_PATH=${TEMP_PATH:-/tmp}
       - DIGITALOCEAN_TOKEN=${DIGITALOCEAN_TOKEN}
     image: thelebster/s3-bucket-telegram-bot
     hostname: s3-bucket-telegram-bot
     container_name: s3-bucket-telegram-bot
     restart: always
     volumes:
-      - ./tmp:/tmp
+      - ./data/tmp:/tmp
 
   test:
     build: .

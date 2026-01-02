@@ -2,6 +2,7 @@ import os
 import html
 import json
 import logging
+import shutil
 import traceback
 import uuid
 from os import path
@@ -24,6 +25,12 @@ logger = logging.getLogger(__name__)
 # The token you got from @botfather when you created the bot
 TELEGRAM_API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
 TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
+
+# Optional: Custom base URLs for local Bot API server
+# @see https://core.telegram.org/bots/api#using-a-local-bot-api-server
+TELEGRAM_BASE_URL = os.getenv('TELEGRAM_BASE_URL')
+TELEGRAM_BASE_FILE_URL = os.getenv('TELEGRAM_BASE_FILE_URL')
+TELEGRAM_LOCAL = os.getenv('TELEGRAM_LOCAL') == '1'
 
 # This can be your own ID, or one for a developer group/channel.
 # You can use the /start command of this bot to see your chat id.
@@ -56,7 +63,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    await update.effective_message.reply_text("My dear cruel world do you ever think about me?")
+    help_text = (
+        "<b>Available commands:</b>\n\n"
+        "/exist &lt;path&gt; - Check if file exists\n"
+        "/delete &lt;path&gt; - Delete a file\n"
+        "/make_public &lt;path&gt; - Make file public\n"
+        "/make_private &lt;path&gt; - Make file private\n"
+        "/copy_file &lt;src&gt; &lt;dest&gt; - Copy file\n"
+        "/list &lt;prefix&gt; [limit] - List files\n"
+        "/get_file_acl &lt;path&gt; - Get file ACL\n"
+        "/get_meta &lt;path&gt; - Get file metadata\n"
+        "/purge_cache &lt;path&gt; - Purge CDN cache (DigitalOcean)\n\n"
+        "<b>Upload:</b> Send any file to upload to S3.\n"
+        "Use caption to set custom path."
+    )
+    await update.effective_message.reply_html(help_text)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -75,11 +96,14 @@ async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if isinstance(attachment, (list, tuple)):
         attachment = attachment[-1]
 
+    # Local API server supports up to 2GB, public API limited to 20MB
     # @see https://core.telegram.org/bots/api#getfile
-    if attachment.file_size > 20 * 1024 * 1024:
+    max_file_size = 2000 * 1024 * 1024 if TELEGRAM_BASE_URL else 20 * 1024 * 1024
+    if attachment.file_size > max_file_size:
+        limit = "2GB" if TELEGRAM_BASE_URL else "20MB"
         await message.reply_html(
             f'<b>File is too big</b>\n\n'
-            f'For the moment, <a href="https://core.telegram.org/bots/api#getfile">bots can download files of up to 20MB in size</a>.\n'
+            f'Bots can download files of up to {limit} in size.\n'
         )
         return
 
@@ -104,7 +128,12 @@ async def upload_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         mime_type = attachment.mime_type
 
     tmp_file_name = f'{TEMP_PATH}/{uuid.uuid4()}'
-    await file.download_to_drive(tmp_file_name)
+
+    # In local mode, file_path is a local path - copy directly instead of HTTP download
+    if TELEGRAM_LOCAL and file.file_path.startswith('/'):
+        shutil.copy(file.file_path, tmp_file_name)
+    else:
+        await file.download_to_drive(tmp_file_name)
     s3_upload_file(tmp_file_name, file_name, mime_type, 'public-read')  # Make public by default
     try:
         os.unlink(tmp_file_name)
@@ -223,8 +252,12 @@ async def list_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     prefix = context.args[0].strip().lstrip('/')
     limit = 10
-    if len(context.args) == 2:
-        limit = int(context.args[1])
+    if len(context.args) >= 2:
+        try:
+            limit = int(context.args[1])
+        except ValueError:
+            await update.effective_message.reply_text(text='Invalid limit. Usage: /list <prefix> [limit]')
+            return
     entries = s3_list_files(prefix, limit=limit)
     if len(entries) == 0:
         await update.effective_message.reply_text(text='Not found')
@@ -325,7 +358,15 @@ def main():
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     defaults = Defaults(link_preview_options=LinkPreviewOptions(is_disabled=True))
-    application = Application.builder().token(TELEGRAM_API_TOKEN).defaults(defaults).build()
+    builder = Application.builder().token(TELEGRAM_API_TOKEN).defaults(defaults)
+
+    # Use local Bot API server if configured
+    if TELEGRAM_BASE_URL:
+        builder = builder.base_url(TELEGRAM_BASE_URL)
+    if TELEGRAM_BASE_FILE_URL:
+        builder = builder.base_file_url(TELEGRAM_BASE_FILE_URL)
+
+    application = builder.build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
@@ -362,7 +403,7 @@ def main():
                                            make_private,
                                            filters.User(username=TELEGRAM_USERNAME)))
 
-    # check if file exist
+    # check if file exists
     application.add_handler(CommandHandler('exist',
                                            file_exist,
                                            filters.User(username=TELEGRAM_USERNAME)))

@@ -1,4 +1,4 @@
-.PHONY: help build up upd down logs test
+.PHONY: help build up upd down logs test local-up local-upd local-down local-logs
 
 ## help    :    Print commands help.
 help: Makefile scripts/commands.mk
@@ -27,5 +27,24 @@ logs:
 ## test    :    Run tests.
 test:
 	docker-compose --profile test run --rm test
+
+# Local Bot API Server commands (for files >20MB)
+COMPOSE_LOCAL = docker-compose -f docker-compose.yml -f docker-compose.local-api.yml
+
+## local-up      :    Start bot with local API server (attached).
+local-up:
+	$(COMPOSE_LOCAL) up --remove-orphans
+
+## local-upd     :    Start bot with local API server (detached).
+local-upd:
+	$(COMPOSE_LOCAL) up -d --remove-orphans
+
+## local-down    :    Stop bot and local API server.
+local-down:
+	$(COMPOSE_LOCAL) down --remove-orphans
+
+## local-logs    :    Show logs (bot + API server).
+local-logs:
+	$(COMPOSE_LOCAL) logs -f
 
 include scripts/commands.mk
