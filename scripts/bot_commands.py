@@ -3,7 +3,7 @@
 Script to set/update the Telegram bot's command menu.
 
 Usage:
-    python scripts/set_commands.py
+    python scripts/bot_commands.py
 
 Requires TELEGRAM_API_TOKEN environment variable (or .env file).
 """

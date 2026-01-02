@@ -134,11 +134,11 @@ Note: ACL-related tests are automatically skipped on storage providers that don'
 
 ## TODO
 
-* [x] Upload single file [up tp 20MB](https://core.telegram.org/bots/api#getfile)
+* [x] Upload single file [up to 20MB](https://core.telegram.org/bots/api#getfile)
 * [x] Delete single file
 * [x] Copy single file to another path on the same bucket
 * [x] Change access level (make file private or public)
-* [x] Check if file exist
+* [x] Check if file exists
 * [x] List files by prefix
 * [x] Get object metadata
 * [x] Purge the cache (DigitalOcean Spaces)
@@ -171,5 +171,5 @@ pip install python-telegram-bot --upgrade
 #### Lock requirements
 
 ```
-/usr/local/opt/pipenv/bin/pipenv lock --requirements > requirements.txt
+/usr/local/opt/pipenv/bin/pipenv requirements > requirements.txt
 ```

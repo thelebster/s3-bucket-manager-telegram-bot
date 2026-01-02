@@ -171,7 +171,7 @@ async def file_exist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         s3_file_path = s3_get_obj_url(file_name)
         if s3_file_exist(file_name):
-            await update.effective_message.reply_text(text=f'File {s3_file_path} exist.')
+            await update.effective_message.reply_text(text=f'File {s3_file_path} exists.')
             return
         await update.effective_message.reply_text(text=f'File {s3_file_path} does not exist.')
     except Exception as e:
